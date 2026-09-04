@@ -1,0 +1,65 @@
+[worldserver]
+
+###################################################################################################
+# mod-playerbots-wintergrasp
+#
+# Automatically accepts the Wintergrasp queue call and the real battle-entry call for playerbots.
+#
+# Recommended target:
+#   mod-playerbots/azerothcore-wotlk : Playerbot branch
+#   mod-playerbots/mod-playerbots    : master
+#
+###################################################################################################
+
+#
+# PlayerbotsWintergrasp.Enable
+#   Enables/disables the whole module.
+#   Default: 1
+#
+PlayerbotsWintergrasp.Enable = 1
+
+#
+# PlayerbotsWintergrasp.AcceptQueue
+#   Accept SMSG_BATTLEFIELD_MGR_QUEUE_INVITE for bots.
+#   This puts the bot into the normal Wintergrasp pre-battle queue.
+#   Default: 1
+#
+PlayerbotsWintergrasp.AcceptQueue = 1
+
+#
+# PlayerbotsWintergrasp.AcceptBattle
+#   Accept SMSG_BATTLEFIELD_MGR_ENTRY_INVITE for bots.
+#   The core itself still validates that the bot has a real, non-expired WG invite.
+#   Default: 1
+#
+PlayerbotsWintergrasp.AcceptBattle = 1
+
+#
+# PlayerbotsWintergrasp.Announce
+#   Shows a short "Created by iCore" module announcement to real players on login.
+#   Playerbot logins do not receive this message.
+#   Default: 1
+#
+PlayerbotsWintergrasp.Announce = 1
+
+#
+# PlayerbotsWintergrasp.AcceptDelayMin
+# PlayerbotsWintergrasp.AcceptDelayMax
+#   Random delay in milliseconds before clicking "Accept".
+#   Prevents hundreds of bots from accepting in the same millisecond.
+#
+#   Keep AcceptDelayMax well below the Wintergrasp entry-invite timeout
+#   (the current core uses a 20 second accept window).
+#
+#   Default: 500 / 2500
+#
+PlayerbotsWintergrasp.AcceptDelayMin = 500
+PlayerbotsWintergrasp.AcceptDelayMax = 2500
+
+#
+# PlayerbotsWintergrasp.Debug
+#   Prints invite detection / acceptance messages to the playerbots logger.
+#   Useful for first testing, but turn it off with lots of bots.
+#   Default: 0
+#
+PlayerbotsWintergrasp.Debug = 0
