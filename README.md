@@ -4,43 +4,40 @@ Created by **iCore**.
 
 License: **GNU GPL v2 or later**.
 
-Külön AzerothCore modul a `mod-playerbots` mellé, amely automatikusan elfogadja a
-Wintergrasp queue meghívást és a tényleges "Enter Battle" meghívást a botoknál.
+A standalone AzerothCore module for `mod-playerbots` that automatically accepts both the Wintergrasp queue invitation and the actual **"Enter Battle"** invitation for bots.
 
-## Mire készült?
+## What is it designed for?
 
-Célzott környezet:
+Target environment:
 
-- `https://github.com/mod-playerbots/azerothcore-wotlk` — **Playerbot** branch
-- `https://github.com/mod-playerbots/mod-playerbots` — master
+* `https://github.com/mod-playerbots/azerothcore-wotlk` — **Playerbot** branch
+* `https://github.com/mod-playerbots/mod-playerbots` — master
 
-A modul nem módosítja a `mod-playerbots` forrását.
+The module does not modify the `mod-playerbots` source code.
 
-## Mit csinál?
+## What does it do?
 
-1. A Playerbot fork saját `OnPlayerbotPacketSent` hookján figyeli a botnak kimenő packeteket.
-2. Ha a bot `SMSG_BATTLEFIELD_MGR_QUEUE_INVITE` packetet kap:
-   - kis véletlen késleltetés után meghívja a core saját
-     `Battlefield::PlayerAcceptInviteToQueue()` függvényét.
-3. Ha a bot `SMSG_BATTLEFIELD_MGR_ENTRY_INVITE` packetet kap:
-   - kis véletlen késleltetés után meghívja a core saját
-     `Battlefield::PlayerAcceptInviteToWar()` függvényét.
-4. A battle-entry elfogadás előtt a modul megnézi, hogy a bot ténylegesen benne van-e
-   a Wintergrasp szerveroldali invited mapjában.
-5. A core maga ellenőrzi az invite lejáratát, raidbe teszi a botot és elküldi az
-   entered választ.
+1. It monitors outgoing packets sent to bots through the Playerbot fork's `OnPlayerbotPacketSent` hook.
+2. When the bot receives an `SMSG_BATTLEFIELD_MGR_QUEUE_INVITE` packet:
 
-### Miért nem közvetlenül a packet hookban fogadja el?
+   * after a small random delay, it calls the core's own `Battlefield::PlayerAcceptInviteToQueue()` function.
+3. When the bot receives an `SMSG_BATTLEFIELD_MGR_ENTRY_INVITE` packet:
 
-A Playerbot outgoing packet feldolgozás több szálról is futhat. A modul ezért a packet
-hookban csak egy mutex-szel védett "pending accept" bejegyzést készít. A Battlefield
-állapot és a raidcsoport módosítása a `WorldScript::OnUpdate` hookban, a world-szálon
-történik. Ez megegyezik a Core `PROCESS_THREADUNSAFE` battlefield packetkezelőinek
-végrehajtási helyével.
+   * after a small random delay, it calls the core's own `Battlefield::PlayerAcceptInviteToWar()` function.
+4. Before accepting the battle-entry invitation, the module checks whether the bot is actually present in the Wintergrasp server-side invited map.
+5. The core itself handles invite expiration, adds the bot to the raid group, and sends the entered response.
 
-## Telepítés
+### Why doesn't it accept the invitation directly from the packet hook?
 
-Másold a teljes mappát ide:
+Outgoing Playerbot packet processing can run from multiple threads. Therefore, the module only creates a mutex-protected **"pending accept"** entry in the packet hook.
+
+The actual Battlefield state changes and raid-group modifications are performed from the `WorldScript::OnUpdate` hook on the world thread.
+
+This matches the execution context used by the Core's `PROCESS_THREADUNSAFE` Battlefield packet handlers.
+
+## Installation
+
+Copy the entire module directory here:
 
 ```text
 azerothcore-wotlk/
@@ -49,21 +46,21 @@ azerothcore-wotlk/
     └── mod-playerbots-wintergrasp/
 ```
 
-Fontos: a mappa neve pontosan ez legyen:
+Important: the directory name must be exactly:
 
 ```text
 mod-playerbots-wintergrasp
 ```
 
-A loader neve ehhez igazodik:
+The loader name is based on this directory name:
 
 ```cpp
 Addmod_playerbots_wintergraspScripts()
 ```
 
-Ezután **újra kell konfigurálni a CMake-et**, majd újra kell fordítani a core-t.
+After that, **CMake must be reconfigured**, and the core must be rebuilt.
 
-Példa Linuxon, ha nálad is static module build van:
+Example on Linux, if you are also using a static module build:
 
 ```bash
 cd azerothcore-wotlk/build
@@ -72,27 +69,28 @@ make -j$(nproc)
 make install
 ```
 
-Windows / Visual Studio esetén:
+### Windows / Visual Studio
+
 1. CMake Configure
 2. CMake Generate
 3. Build `ALL_BUILD`
-4. Másold/telepítsd a friss worldservert a szokásos módon.
+4. Copy/install the updated worldserver using your usual procedure.
 
-## Config
+## Configuration
 
-A modulban:
+The module provides:
 
 ```text
 conf/mod_playerbots_wintergrasp.conf.dist
 ```
 
-Build/install után a modul config mappájában legyen belőle aktív `.conf` fájl:
+After building/installing, create an active `.conf` file in the module's configuration directory:
 
 ```text
 mod_playerbots_wintergrasp.conf
 ```
 
-Ajánlott első teszt:
+Recommended initial test configuration:
 
 ```ini
 PlayerbotsWintergrasp.Enable = 1
@@ -104,66 +102,65 @@ PlayerbotsWintergrasp.AcceptDelayMax = 2500
 PlayerbotsWintergrasp.Debug = 1
 ```
 
-Ha már működik:
+Once everything is working:
 
 ```ini
 PlayerbotsWintergrasp.Debug = 0
 ```
 
-## Teszt
+## Testing
 
-1. Indítsd el a worldservert.
-2. A konzolban ezt kell látnod:
+1. Start the worldserver.
+2. You should see the following in the console:
 
 ```text
 >> Loaded mod-playerbots-wintergrasp
 ```
 
-3. Legyen egy playerbot Wintergraspban olyan időpontban, amikor a WG queue call megjelenik.
-4. Debug = 1 mellett ilyesmit kell látnod:
+3. Have a playerbot in Wintergrasp at a time when the WG queue call appears.
+4. With `Debug = 1`, you should see messages similar to:
 
 ```text
 [PlayerbotsWintergrasp] BotName: Wintergrasp queue invite detected, accepting in 1234 ms
 [PlayerbotsWintergrasp] BotName: accepted Wintergrasp queue invite
 ```
 
-Valódi játékos belépésekor, ha az `Announce` engedélyezve van:
+When a real player enters the game, if `Announce` is enabled:
 
 ```text
 mod-playerbots-wintergrasp module created by iCore.
 ```
 
-Battle startkor:
+When the battle starts:
 
 ```text
 [PlayerbotsWintergrasp] BotName: Wintergrasp battle-entry invite detected, accepting in 987 ms
 [PlayerbotsWintergrasp] BotName: accepted Wintergrasp battle-entry invite
 ```
 
-A Playerbot fork jelenlegi Battlefield core-jában a `.bf queue` paranccsal is
-ellenőrizhető a queue / invited / in-war állapot, ha az adott buildedben ez a parancs elérhető.
+The current Battlefield core in the Playerbot fork also provides the `.bf queue` command for checking the queue / invited / in-war state, if that command is available in your build.
 
-## Fontos: mit NEM csinál még?
+## Important: What does it NOT do yet?
 
-Ez a verzió az **invite elfogadást** oldja meg.
+This version handles **invitation acceptance**.
 
-Tehát:
-- queue call elfogadás: igen
-- Enter Battle elfogadás: igen
-- WG raidbe bekerülés: a core normál útvonalán igen
-- invite lejárat ellenőrzése: igen, core oldalon
-- külön Wintergrasp objective AI: még nem
-- workshop/jármű/fal/tower stratégia: még nem
+Therefore:
 
-Ha a bot már bent van Wintergraspban, a jelenlegi playerbots általános mozgás/combat AI-ja
-tovább működhet, de ez a modul önmagában nem tanítja meg a botokat a teljes WG stratégiára.
+* Queue call acceptance: **yes**
+* Enter Battle acceptance: **yes**
+* Joining the WG raid: **yes, through the normal Core path**
+* Invite expiration checking: **yes, handled by the Core**
+* Dedicated Wintergrasp objective AI: **not yet**
+* Workshop / vehicle / wall / tower strategy: **not yet**
 
-## Nincs SQL
+Once the bot is inside Wintergrasp, the existing general movement/combat AI provided by Playerbots may continue to operate, but this module itself does not teach the bots the complete Wintergrasp strategy.
 
-A modulhoz nem kell adatbázis-módosítás.
+## No SQL
 
-## Kompatibilitási megjegyzés
+The module does not require any database modifications.
 
-A forrás a 2026-09-04-én aktuális Playerbot branch publikus hookjai és Battlefield API-ja
-alapján készült. A modul direkt a Playerbot fork `PlayerbotScript` hookját használja,
-ezért a sima upstream AzerothCore-ra nem ez a célzott build.
+## Compatibility Notes
+
+The source was developed against the public Playerbot branch hooks and Battlefield API available as of **2026-09-04**.
+
+The module directly uses the `PlayerbotScript` hook provided by the Playerbot fork, so it is specifically designed for the Playerbot fork and **not for standard upstream AzerothCore**.
