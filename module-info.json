@@ -1,0 +1,17 @@
+{
+  "name": "mod-playerbots-wintergrasp",
+  "version": "1.0.0",
+  "author": "iCore",
+  "license": "GPL-2.0-or-later",
+  "target_core": "mod-playerbots/azerothcore-wotlk Playerbot branch",
+  "target_module": "mod-playerbots master",
+  "sql_required": false,
+  "features": [
+    "accept Wintergrasp queue invite",
+    "accept Wintergrasp battle-entry invite",
+    "randomized accept delay",
+    "thread-safe deferred accept",
+    "optional player login announcement",
+    "debug logging"
+  ]
+}

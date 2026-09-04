@@ -1,0 +1,28 @@
+# Build output
+/build/
+/out/
+/bin/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# IDE files
+/.vs/
+/.vscode/
+/.idea/
+*.sln
+*.suo
+*.user
+*.vcxproj*
+
+# Compiler output
+*.dll
+*.exe
+*.lib
+*.obj
+*.pdb
+*.log
+
+# Local active configuration (keep the distributable template)
+conf/*.conf
+!conf/*.conf.dist
