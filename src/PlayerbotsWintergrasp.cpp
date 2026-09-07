@@ -24,6 +24,8 @@
 #include "WorldPacket.h"
 #include "WorldScript.h"
 #include "WorldSession.h"
+#include "WintergraspBotController.h"
+#include "WintergraspModuleState.h"
 
 #include <algorithm>
 #include <atomic>
@@ -184,6 +186,10 @@ namespace
             _acceptBattle.store(sConfigMgr->GetOption<bool>("PlayerbotsWintergrasp.AcceptBattle", true));
             _announce.store(sConfigMgr->GetOption<bool>("PlayerbotsWintergrasp.Announce", true));
             _debug.store(sConfigMgr->GetOption<bool>("PlayerbotsWintergrasp.Debug", false));
+            _tactics.store(sConfigMgr->GetOption<bool>("PlayerbotsWintergrasp.Tactics.Enable", false));
+
+            uint32 tacticsInterval = sConfigMgr->GetOption<uint32>("PlayerbotsWintergrasp.Tactics.UpdateInterval", 1000);
+            _tacticsUpdateInterval.store(std::max<uint32>(250, tacticsInterval));
 
             uint32 minDelay = sConfigMgr->GetOption<uint32>("PlayerbotsWintergrasp.AcceptDelayMin", 500);
             uint32 maxDelay = sConfigMgr->GetOption<uint32>("PlayerbotsWintergrasp.AcceptDelayMax", 2500);
@@ -200,6 +206,8 @@ namespace
         bool AcceptBattleEnabled() const { return _acceptBattle.load(); }
         bool AnnounceEnabled() const { return _announce.load(); }
         bool DebugEnabled() const { return _debug.load(); }
+        bool TacticsEnabled() const { return _tactics.load(); }
+        uint32 TacticsUpdateInterval() const { return _tacticsUpdateInterval.load(); }
 
         uint32 GetAcceptDelay() const
         {
@@ -220,8 +228,10 @@ namespace
         std::atomic<bool> _acceptBattle{ true };
         std::atomic<bool> _announce{ true };
         std::atomic<bool> _debug{ false };
+        std::atomic<bool> _tactics{ false };
         std::atomic<uint32> _acceptDelayMin{ 500 };
         std::atomic<uint32> _acceptDelayMax{ 2500 };
+        std::atomic<uint32> _tacticsUpdateInterval{ 1000 };
     };
 
     bool IsEnabled() { return WintergraspConfig::Instance().IsEnabled(); }
@@ -230,6 +240,8 @@ namespace
     bool AnnounceEnabled() { return WintergraspConfig::Instance().AnnounceEnabled(); }
     bool DebugEnabled() { return WintergraspConfig::Instance().DebugEnabled(); }
     uint32 GetAcceptDelay() { return WintergraspConfig::Instance().GetAcceptDelay(); }
+    bool TacticsEnabled() { return WintergraspConfig::Instance().TacticsEnabled(); }
+    uint32 TacticsUpdateInterval() { return WintergraspConfig::Instance().TacticsUpdateInterval(); }
 
     bool IsPlayerbot(Player* player)
     {
@@ -342,6 +354,9 @@ namespace
             if (!packet || !IsPlayerbot(player) || !IsEnabled())
                 return;
 
+            PlayerbotsWintergrasp::TrackBot(player);
+            PlayerbotsWintergrasp::ObserveWorldStatePacket(player, *packet);
+
             switch (packet->GetOpcode())
             {
                 case SMSG_BATTLEFIELD_MGR_QUEUE_INVITE:
@@ -386,7 +401,16 @@ namespace
         void OnPlayerbotLogout(Player* player) override
         {
             if (player)
+            {
                 WintergraspPendingStore::Instance().Erase(player->GetGUID().GetCounter());
+                PlayerbotsWintergrasp::ForgetBot(player->GetGUID().GetCounter());
+            }
+        }
+
+        void OnPlayerbotUpdate(uint32 diff) override
+        {
+            PlayerbotsWintergrasp::UpdateBotTactics(
+                diff, IsEnabled() && TacticsEnabled(), TacticsUpdateInterval());
         }
     };
 
@@ -425,7 +449,11 @@ namespace
             WintergraspConfig::Instance().Load();
 
             if (!IsEnabled())
+            {
                 WintergraspPendingStore::Instance().Clear();
+                PlayerbotsWintergrasp::ClearBotTactics();
+                PlayerbotsWintergrasp::ClearWorldStates();
+            }
         }
 
         void OnUpdate(uint32 diff) override
