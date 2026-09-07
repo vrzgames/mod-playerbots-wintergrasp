@@ -1,6 +1,6 @@
 {
   "name": "mod-playerbots-wintergrasp",
-  "version": "1.0.0",
+  "version": "2.0.0-dev",
   "author": "iCore",
   "license": "GPL-2.0-or-later",
   "target_core": "mod-playerbots/azerothcore-wotlk Playerbot branch",
@@ -11,6 +11,10 @@
     "accept Wintergrasp battle-entry invite",
     "randomized accept delay",
     "thread-safe deferred accept",
+    "optional Wintergrasp A* objective routes",
+    "optional workshop capture tactics",
+    "optional vehicle and fortress cannon tactics",
+    "module-side live Wintergrasp world-state cache",
     "optional player login announcement",
     "debug logging"
   ]

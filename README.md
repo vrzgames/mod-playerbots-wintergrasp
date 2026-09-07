@@ -4,7 +4,9 @@ Created by **iCore**.
 
 License: **GNU GPL v2 or later**.
 
-A standalone AzerothCore module for `mod-playerbots` that automatically accepts both the Wintergrasp queue invitation and the actual **"Enter Battle"** invitation for bots.
+A standalone AzerothCore module for `mod-playerbots` that automatically accepts both Wintergrasp invitations and can optionally run dedicated Wintergrasp objective, workshop, vehicle, and cannon tactics.
+
+The tactics port is currently an **experimental, local-testing feature** and is disabled by default. The stable packet-driven invitation logic remains independent from it.
 
 ## What is it designed for?
 
@@ -13,7 +15,7 @@ Target environment:
 * `https://github.com/mod-playerbots/azerothcore-wotlk` — **Playerbot** branch
 * `https://github.com/mod-playerbots/mod-playerbots` — master
 
-The module does not modify the `mod-playerbots` source code.
+The module does not modify the AzerothCore or `mod-playerbots` source code. It must be built together with `mod-playerbots` using `-DMODULES=static` because the tactical controller uses the public Playerbot AI classes.
 
 ## What does it do?
 
@@ -26,6 +28,15 @@ The module does not modify the `mod-playerbots` source code.
    * after a small random delay, it calls the core's own `Battlefield::PlayerAcceptInviteToWar()` function.
 4. Before accepting the battle-entry invitation, the module checks whether the bot is actually present in the Wintergrasp server-side invited map.
 5. The core itself handles invite expiration, adds the bot to the raid group, and sends the entered response.
+6. With `PlayerbotsWintergrasp.Tactics.Enable = 1`, bots that are already enrolled in an active Wintergrasp battle use dedicated logic for:
+
+   * A* routes and battlefield objectives
+   * Workshop capture and ownership changes
+   * Vehicle summoning and boarding
+   * Attacker wall/gate pressure and defender tower pressure
+   * Fortress cannon boarding and vehicle weapon targeting
+
+The tactics controller never creates or accepts an invitation. It starts only after `Battlefield::IsPlayerInBattlefield()` confirms that the existing invitation path enrolled the bot.
 
 ### Why doesn't it accept the invitation directly from the packet hook?
 
@@ -42,6 +53,7 @@ Copy the entire module directory here:
 ```text
 azerothcore-wotlk/
 └── modules/
+    ├── mod-playerbots/
     └── mod-playerbots-wintergrasp/
 ```
 
@@ -59,7 +71,7 @@ Addmod_playerbots_wintergraspScripts()
 
 After that, **CMake must be reconfigured**, and the core must be rebuilt.
 
-Example on Linux, if you are also using a static module build:
+Example on Linux (static modules are required for the tactics port):
 
 ```bash
 cd azerothcore-wotlk/build
@@ -98,7 +110,15 @@ PlayerbotsWintergrasp.AcceptBattle = 1
 PlayerbotsWintergrasp.Announce = 1
 PlayerbotsWintergrasp.AcceptDelayMin = 500
 PlayerbotsWintergrasp.AcceptDelayMax = 2500
+PlayerbotsWintergrasp.Tactics.Enable = 0
+PlayerbotsWintergrasp.Tactics.UpdateInterval = 1000
 PlayerbotsWintergrasp.Debug = 1
+```
+
+First verify the existing invitation behavior with tactics disabled. Then enable the local tactical test with:
+
+```ini
+PlayerbotsWintergrasp.Tactics.Enable = 1
 ```
 
 Once everything is working:
@@ -139,20 +159,26 @@ When the battle starts:
 
 The current Battlefield core in the Playerbot fork also provides the `.bf queue` command for checking the queue / invited / in-war state, if that command is available in your build.
 
-## Important: What does it NOT do yet?
+## Local tactics test checklist
 
-This version handles **invitation acceptance**.
+The current local build provides:
 
-Therefore:
-
-* Queue call acceptance: **yes**
-* Enter Battle acceptance: **yes**
+* Queue call acceptance: **yes, unchanged**
+* Enter Battle acceptance: **yes, unchanged**
 * Joining the WG raid: **yes, through the normal Core path**
 * Invite expiration checking: **yes, handled by the Core**
-* Dedicated Wintergrasp objective AI: **not yet**
-* Workshop / vehicle / wall / tower strategy: **not yet**
+* Dedicated Wintergrasp objective AI: **experimental**
+* Workshop / vehicle / wall / tower strategy: **experimental**
 
-Once the bot is inside Wintergrasp, the existing general movement/combat AI provided by Playerbots may continue to operate, but this module itself does not teach the bots the complete Wintergrasp strategy.
+During a test battle, check both factions and watch for these milestones:
+
+1. Bots still accept queue and entry invitations with the configured randomized delay.
+2. No tactical movement starts before the bot is listed as in-war.
+3. Infantry spreads between objectives and contests capturable workshops.
+4. Lieutenant-ranked bots summon and board vehicles when slots are available.
+5. Attacker vehicles damage the fortress and defender vehicles pressure southern towers.
+6. Defenders near the fortress board free cannons and fire at hostile vehicles.
+7. Death, logout, battle end, and config reload release the bot's tactical assignment.
 
 ## No SQL
 
@@ -163,3 +189,14 @@ The module does not require any database modifications.
 The source was developed against the public Playerbot branch hooks and Battlefield API available as of **2026-09-04**.
 
 The module directly uses the `PlayerbotScript` hook provided by the Playerbot fork, so it is specifically designed for the Playerbot fork and **not for standard upstream AzerothCore**.
+
+## Attribution
+
+The original Wintergrasp bot concept and foundation come from NoxMax's GPL-2.0-or-later work:
+
+* [`NoxMax/mod-playerbots`, branch `The-Winds-of-Wintergrasp`](https://github.com/mod-playerbots/mod-playerbots/compare/master...NoxMax:mod-playerbots:The-Winds-of-Wintergrasp)
+* [`NoxMax/azerothcore-wotlk`, branch `Nox-AC-PB-WG`](https://github.com/mod-playerbots/azerothcore-wotlk/compare/Playerbot...NoxMax:azerothcore-wotlk:Nox-AC-PB-WG)
+
+The implementation included in this module has since been revised and improved.
+
+This module replaces the two extra `BattlefieldWG` query methods from that core branch with a module-owned cache of the authoritative world-state packets. This is what keeps the port installable without patching the core.
