@@ -57,6 +57,25 @@ PlayerbotsWintergrasp.AcceptDelayMin = 500
 PlayerbotsWintergrasp.AcceptDelayMax = 2500
 
 #
+# PlayerbotsWintergrasp.Tactics.Enable
+#   Enables the experimental local port of NoxMax's Wintergrasp battlefield AI:
+#   route objectives, workshop capture, vehicle summoning/driving and cannon use.
+#
+#   The existing packet-driven queue/battle invite handling above is independent
+#   and is not replaced by this controller.
+#
+#   Default: 0 (enable it explicitly for local testing)
+#
+PlayerbotsWintergrasp.Tactics.Enable = 0
+
+#
+# PlayerbotsWintergrasp.Tactics.UpdateInterval
+#   Controller interval in milliseconds. Values below 250 are clamped to 250.
+#   Default: 1000
+#
+PlayerbotsWintergrasp.Tactics.UpdateInterval = 1000
+
+#
 # PlayerbotsWintergrasp.Debug
 #   Prints invite detection / acceptance messages to the playerbots logger.
 #   Useful for first testing, but turn it off with lots of bots.
