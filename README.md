@@ -53,7 +53,6 @@ Copy the entire module directory here:
 ```text
 azerothcore-wotlk/
 └── modules/
-    ├── mod-playerbots/
     └── mod-playerbots-wintergrasp/
 ```
 
