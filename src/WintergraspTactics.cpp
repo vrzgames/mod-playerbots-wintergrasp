@@ -403,6 +403,7 @@ static bool HasActiveAttackProcess(Player* bot, PlayerbotAI* botAI)
     if (bot->IsInCombat() || botAI->GetState() == BOT_STATE_COMBAT || bot->GetVictim())
         return true;
 
+    AiObjectContext* context = botAI->GetAiObjectContext();
     return AI_VALUE2(bool, "combat", "self target") || AI_VALUE(uint8, "attacker count");
 }
 
@@ -411,8 +412,9 @@ static bool IsNearbyHostile(Player* bot, Unit* target)
     return target && !bot->IsFriendlyTo(target) && bot->GetDistance(target) <= TRAVEL_HOSTILE_SAFETY_DIST;
 }
 
-static bool HasNearbyHostileTarget(Player* bot)
+static bool HasNearbyHostileTarget(Player* bot, PlayerbotAI* botAI)
 {
+    AiObjectContext* context = botAI->GetAiObjectContext();
     return IsNearbyHostile(bot, AI_VALUE(Unit*, "current target")) ||
            IsNearbyHostile(bot, AI_VALUE(Unit*, "enemy player target")) ||
            IsNearbyHostile(bot, AI_VALUE(Unit*, "dps target"));
@@ -452,7 +454,7 @@ static bool CanCastWintergraspMount(Player* bot, PlayerbotAI* botAI)
            !bot->HasUnitState(UNIT_STATE_CONTROLLED | UNIT_STATE_ROOT) &&
            !bot->IsNonMeleeSpellCast(false, false, true) &&
            !(bot->HasAuraType(SPELL_AURA_TRANSFORM) && bot->IsInDisallowedMountForm()) &&
-           !HasActiveAttackProcess(bot, botAI) && !HasNearbyHostileTarget(bot);
+           !HasActiveAttackProcess(bot, botAI) && !HasNearbyHostileTarget(bot, botAI);
 }
 
 using GroundMountSpellMap = std::map<int32, std::vector<uint32>>;
@@ -526,7 +528,7 @@ static bool PrepareInfantryTravel(Player* bot, PlayerbotAI* botAI, Position cons
     float objectiveDistance = bot->GetDistance(
         objective.GetPositionX(), objective.GetPositionY(), objective.GetPositionZ());
 
-    if (HasActiveAttackProcess(bot, botAI) || HasNearbyHostileTarget(bot))
+    if (HasActiveAttackProcess(bot, botAI) || HasNearbyHostileTarget(bot, botAI))
     {
         RefreshHostileTargets(botAI);
         DismountForWintergrasp(bot);
